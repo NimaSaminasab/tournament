@@ -5,7 +5,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Fotball Turnering',
+  title: 'Persia Fotball turnering',
   description: 'Administrer fotball turneringer',
 }
 
@@ -23,7 +23,7 @@ export default function RootLayout({
               <div className="flex justify-between h-16">
                 <div className="flex items-center">
                   <h1 className="text-xl font-semibold text-gray-900">
-                    Fotball Turnering
+                    Persia Fotball turnering
                   </h1>
                 </div>
                 <nav className="flex space-x-8">

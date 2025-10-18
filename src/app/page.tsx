@@ -6,7 +6,7 @@ export default function Home() {
       <div className="border-4 border-dashed border-gray-200 rounded-lg p-8">
         <div className="text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            Velkommen til Fotball Turnering
+            Velkommen til Persia Fotball turnering
           </h2>
           <p className="text-lg text-gray-600 mb-8">
             Administrer lag, spillere og kamper på en enkel måte
