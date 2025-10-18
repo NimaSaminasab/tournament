@@ -1,0 +1,73 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Team {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  players Player[]
+  homeGames Game[] @relation("HomeTeam")
+  awayGames Game[] @relation("AwayTeam")
+  goals    Goal[]
+  
+  @@map("teams")
+}
+
+model Player {
+  id        Int      @id @default(autoincrement())
+  name      String
+  number    Int
+  teamId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  goals Goal[]
+  
+  @@unique([teamId, number])
+  @@map("players")
+}
+
+model Game {
+  id        Int      @id @default(autoincrement())
+  homeTeamId Int
+  awayTeamId Int
+  homeScore Int      @default(0)
+  awayScore Int      @default(0)
+  status    String   @default("SCHEDULED")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  homeTeam Team @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam Team @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  goals    Goal[]
+  
+  @@map("games")
+}
+
+model Goal {
+  id        Int      @id @default(autoincrement())
+  gameId    Int
+  playerId  Int
+  teamId    Int
+  minute    Int?
+  createdAt DateTime @default(now())
+  
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id])
+  team   Team   @relation(fields: [teamId], references: [id])
+  
+  @@map("goals")
+}
+
