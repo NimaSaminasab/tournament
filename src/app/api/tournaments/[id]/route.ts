@@ -30,6 +30,20 @@ export async function PATCH(
       data: { isFinished }
     })
 
+    // If tournament is being finished, unassign all players from teams
+    if (isFinished) {
+      await prisma.player.updateMany({
+        where: {
+          tournamentId: tournamentId,
+          teamId: { not: null }
+        },
+        data: {
+          teamId: null,
+          tournamentId: null // Remove from tournament context
+        }
+      })
+    }
+
     return NextResponse.json(updatedTournament)
   } catch (error) {
     console.error('Error updating tournament:', error)
