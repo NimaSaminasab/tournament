@@ -24,14 +24,18 @@ export default function TeamPlayersPage() {
   const [newPlayer, setNewPlayer] = useState({ name: '', number: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [unassignedPlayers, setUnassignedPlayers] = useState<Player[]>([])
+  const [selectedPoolPlayerId, setSelectedPoolPlayerId] = useState('')
+  const [assigning, setAssigning] = useState(false)
 
   useEffect(() => {
     fetchTeam()
-  }, [params.id])
+    fetchUnassigned()
+  }, [params.teamId])
 
   const fetchTeam = async () => {
     try {
-      const response = await fetch(`/api/teams/${params.id}`)
+      const response = await fetch(`/api/tournaments/${params.id}/teams/${params.teamId}`)
       if (response.ok) {
         const teamData = await response.json()
         setTeam(teamData)
@@ -41,6 +45,18 @@ export default function TeamPlayersPage() {
       console.error('Error fetching team:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchUnassigned = async () => {
+    try {
+      const response = await fetch(`/api/tournaments/${params.id}/players`)
+      if (response.ok) {
+        const data = await response.json()
+        setUnassignedPlayers(data)
+      }
+    } catch (error) {
+      console.error('Error fetching unassigned players:', error)
     }
   }
 
@@ -66,7 +82,7 @@ export default function TeamPlayersPage() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch(`/api/teams/${params.id}/players`, {
+      const response = await fetch(`/api/tournaments/${params.id}/teams/${params.teamId}/players`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -93,6 +109,37 @@ export default function TeamPlayersPage() {
     }
   }
 
+  const handleAssignFromPool = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedPoolPlayerId) return
+    if (players.length >= 10) {
+      alert('Et lag kan maksimalt ha 10 spillere')
+      return
+    }
+    setAssigning(true)
+    try {
+      const response = await fetch(`/api/tournaments/${params.id}/teams/${params.teamId}/players`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromPlayerId: parseInt(selectedPoolPlayerId, 10) })
+      })
+      if (response.ok) {
+        const player = await response.json()
+        setPlayers([...players, player])
+        setSelectedPoolPlayerId('')
+        setUnassignedPlayers(unassignedPlayers.filter(p => p.id !== player.id))
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Feil ved tildeling av spiller')
+      }
+    } catch (error) {
+      console.error('Error assigning player:', error)
+      alert('Feil ved tildeling av spiller')
+    } finally {
+      setAssigning(false)
+    }
+  }
+
   const handleDeletePlayer = async (playerId: number) => {
     if (!confirm('Er du sikker på at du vil fjerne denne spilleren fra laget?')) {
       return
@@ -104,7 +151,10 @@ export default function TeamPlayersPage() {
       })
 
       if (response.ok) {
+        // Remove from team players list
         setPlayers(players.filter(p => p.id !== playerId))
+        // Refresh unassigned players list to show the freed player
+        fetchUnassigned()
       } else {
         alert('Feil ved fjerning av spiller')
       }
@@ -147,55 +197,28 @@ export default function TeamPlayersPage() {
         </p>
       </div>
 
-      {/* Add new player form */}
+      {/* Removed manual add player form as per request */}
+
       <div className="bg-white shadow rounded-lg p-6 mb-8">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Legg til ny spiller</h2>
-        <form onSubmit={handleAddPlayer} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div>
-            <label htmlFor="playerName" className="block text-sm font-medium text-gray-700">
-              Spillernavn
-            </label>
-            <input
-              type="text"
-              id="playerName"
-              required
-              value={newPlayer.name}
-              onChange={(e) => setNewPlayer({ ...newPlayer, name: e.target.value })}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              placeholder="F.eks. Erling Haaland"
-            />
-          </div>
-          <div>
-            <label htmlFor="playerNumber" className="block text-sm font-medium text-gray-700">
-              Spillernummer
-            </label>
-            <input
-              type="number"
-              id="playerNumber"
-              required
-              min="1"
-              max="99"
-              value={newPlayer.number}
-              onChange={(e) => setNewPlayer({ ...newPlayer, number: e.target.value })}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              placeholder="F.eks. 9"
-            />
-          </div>
-          <div className="flex items-end">
-            <button
-              type="submit"
-              disabled={isSubmitting || players.length >= 10 || !newPlayer.name.trim() || !newPlayer.number}
-              className="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? 'Legger til...' : 'Legg til spiller'}
-            </button>
-          </div>
+        <form onSubmit={handleAssignFromPool} className="flex gap-3 items-end">
+          <select
+            value={selectedPoolPlayerId}
+            onChange={(e) => setSelectedPoolPlayerId(e.target.value)}
+            className="block w-1/2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          >
+            <option value="">Velg spiller</option>
+            {unassignedPlayers.sort((a,b)=>a.number-b.number).map((p) => (
+              <option key={p.id} value={p.id}>{`#${p.number} ${p.name}`}</option>
+            ))}
+          </select>
+          <button
+            type="submit"
+            disabled={assigning || !selectedPoolPlayerId || players.length >= 10}
+            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {assigning ? 'Legger til...' : 'Legg til spiller'}
+          </button>
         </form>
-        {players.length >= 10 && (
-          <p className="mt-2 text-sm text-red-600">
-            Maksimalt 10 spillere per lag
-          </p>
-        )}
       </div>
 
       {/* Players list */}

@@ -1,279 +1,108 @@
-import { prisma } from '@/lib/prisma'
+'use client'
 
-interface TeamStats {
-  teamId: number
-  teamName: string
-  gamesPlayed: number
-  wins: number
-  draws: number
-  losses: number
-  goalsFor: number
-  goalsAgainst: number
-  points: number
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+
+interface Tournament {
+  id: number
+  name: string
+  createdAt: string
 }
 
-interface TopScorer {
-  playerId: number
-  playerName: string
-  playerNumber: number
-  teamName: string
-  goals: number
-}
+export default function StandingsPage() {
+  const [tournaments, setTournaments] = useState<Tournament[]>([])
+  const [loading, setLoading] = useState(true)
 
-async function getStandings(): Promise<TeamStats[]> {
-  const teams = await prisma.team.findMany({
-    include: {
-      homeGames: {
-        where: {
-          status: 'FINISHED'
-        }
-      },
-      awayGames: {
-        where: {
-          status: 'FINISHED'
-        }
+  useEffect(() => {
+    fetchTournaments()
+  }, [])
+
+  const fetchTournaments = async () => {
+    try {
+      const response = await fetch('/api/tournaments')
+      if (response.ok) {
+        const data = await response.json()
+        setTournaments(data)
       }
+    } catch (error) {
+      console.error('Error fetching tournaments:', error)
+    } finally {
+      setLoading(false)
     }
-  })
+  }
 
-  const standings: TeamStats[] = teams.map(team => {
-    let gamesPlayed = 0
-    let wins = 0
-    let draws = 0
-    let losses = 0
-    let goalsFor = 0
-    let goalsAgainst = 0
-
-    // Calculate stats for home games
-    team.homeGames.forEach(game => {
-      gamesPlayed++
-      goalsFor += game.homeScore
-      goalsAgainst += game.awayScore
-
-      if (game.homeScore > game.awayScore) {
-        wins++
-      } else if (game.homeScore === game.awayScore) {
-        draws++
-      } else {
-        losses++
-      }
-    })
-
-    // Calculate stats for away games
-    team.awayGames.forEach(game => {
-      gamesPlayed++
-      goalsFor += game.awayScore
-      goalsAgainst += game.homeScore
-
-      if (game.awayScore > game.homeScore) {
-        wins++
-      } else if (game.awayScore === game.homeScore) {
-        draws++
-      } else {
-        losses++
-      }
-    })
-
-    const points = wins * 3 + draws * 1
-
-    return {
-      teamId: team.id,
-      teamName: team.name,
-      gamesPlayed,
-      wins,
-      draws,
-      losses,
-      goalsFor,
-      goalsAgainst,
-      points
-    }
-  })
-
-  // Sort by points (descending), then by goal difference (descending), then by goals for (descending)
-  return standings.sort((a, b) => {
-    if (a.points !== b.points) {
-      return b.points - a.points
-    }
-    const aGoalDiff = a.goalsFor - a.goalsAgainst
-    const bGoalDiff = b.goalsFor - b.goalsAgainst
-    if (aGoalDiff !== bGoalDiff) {
-      return bGoalDiff - aGoalDiff
-    }
-    return b.goalsFor - a.goalsFor
-  })
-}
-
-async function getTopScorers(): Promise<TopScorer[]> {
-  const players = await prisma.player.findMany({
-    include: {
-      team: true,
-      goals: {
-        include: {
-          game: true
-        }
-      }
-    }
-  })
-
-  const topScorers: TopScorer[] = players
-    .map(player => ({
-      playerId: player.id,
-      playerName: player.name,
-      playerNumber: player.number,
-      teamName: player.team.name,
-      goals: player.goals.length
-    }))
-    .filter(player => player.goals > 0)
-    .sort((a, b) => b.goals - a.goals)
-    .slice(0, 3)
-
-  return topScorers
-}
-
-export default async function StandingsPage() {
-  const standings = await getStandings()
-  const topScorers = await getTopScorers()
+  if (loading) {
+    return (
+      <div className="px-4 py-6 sm:px-0">
+        <div className="text-center">Laster...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="px-4 py-6 sm:px-0">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
-          <h1 className="text-2xl font-semibold text-gray-900">Ligatabell</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Ligatabeller</h1>
           <p className="mt-2 text-sm text-gray-700">
-            Oversikt over alle lag og deres resultater
+            Velg en turnering for å se ligatabellen
           </p>
         </div>
       </div>
 
-      <div className="mt-8 flow-root">
-        <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-          <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-            <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-              <table className="min-w-full divide-y divide-gray-300">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
-                      #
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
-                      Lag
-                    </th>
-                    <th scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wide">
-                      K
-                    </th>
-                    <th scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wide">
-                      V
-                    </th>
-                    <th scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wide">
-                      U
-                    </th>
-                    <th scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wide">
-                      T
-                    </th>
-                    <th scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wide">
-                      +
-                    </th>
-                    <th scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wide">
-                      -
-                    </th>
-                    <th scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wide">
-                      P
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {standings.map((team, index) => (
-                    <tr key={team.teamId} className={index < 3 ? 'bg-yellow-50' : ''}>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {index + 1}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{team.teamName}</div>
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                        {team.gamesPlayed}
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                        {team.wins}
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                        {team.draws}
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                        {team.losses}
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                        {team.goalsFor}
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                        {team.goalsAgainst}
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900 text-center">
-                        {team.points}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      <div className="mt-8">
+        {tournaments.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-gray-500 text-lg mb-4">Ingen turneringer funnet</div>
+            <p className="text-sm text-gray-400">
+              Opprett en turnering for å se ligatabeller
+            </p>
+            <div className="mt-4">
+              <Link
+                href="/tournaments/new"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+              >
+                Opprett ny turnering
+              </Link>
             </div>
           </div>
-        </div>
-      </div>
-
-      {standings.length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-gray-500 text-lg mb-4">Ingen ferdige kamper ennå</div>
-          <p className="text-sm text-gray-400">
-            Kamper må være ferdige for å vises i tabellen
-          </p>
-        </div>
-      )}
-
-      {/* Top Scorers Section */}
-      {topScorers.length > 0 && (
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Toppscorere</h2>
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">De 3 beste målskårerne</h3>
-            </div>
-            <div className="divide-y divide-gray-200">
-              {topScorers.map((scorer, index) => (
-                <div key={scorer.playerId} className="px-6 py-4 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold text-white ${
-                        index === 0 ? 'bg-yellow-500' : 
-                        index === 1 ? 'bg-gray-400' : 
-                        'bg-orange-600'
-                      }`}>
-                        {index + 1}
-                      </span>
-                    </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        #{scorer.playerNumber} {scorer.playerName}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {scorer.teamName}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-gray-900">
-                      {scorer.goals}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {scorer.goals === 1 ? 'mål' : 'mål'}
-                    </div>
-                  </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {tournaments.map((tournament) => (
+              <Link
+                key={tournament.id}
+                href={`/tournaments/${tournament.id}/standings`}
+                className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-blue-500 rounded-lg shadow hover:shadow-md transition-shadow"
+              >
+                <div>
+                  <span className="rounded-lg inline-flex p-3 bg-blue-50 text-blue-700 ring-4 ring-white">
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </span>
                 </div>
-              ))}
-            </div>
+                <div className="mt-8">
+                  <h3 className="text-lg font-medium">
+                    <span className="absolute inset-0" aria-hidden="true" />
+                    {tournament.name}
+                  </h3>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Se ligatabell og toppscorere
+                  </p>
+                </div>
+                <span
+                  className="pointer-events-none absolute top-6 right-6 text-gray-300 group-hover:text-gray-400"
+                  aria-hidden="true"
+                >
+                  <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20 4h1a1 1 0 00-1-1v1zm-1 12a1 1 0 102 0h-2zM8 3a1 1 0 000 2V3zM3.293 19.293a1 1 0 101.414 1.414l-1.414-1.414zM19 4v12h2V4h-2zm1-1H8v2h12V3zm-.707.293l-16 16 1.414 1.414 16-16-1.414-1.414z" />
+                  </svg>
+                </span>
+              </Link>
+            ))}
           </div>
-        </div>
-      )}
-
+        )}
+      </div>
     </div>
   )
 }

@@ -17,8 +17,8 @@ export async function POST(
       return NextResponse.json({ error: 'Player name is required' }, { status: 400 })
     }
 
-    if (!number || isNaN(number) || number < 1 || number > 99) {
-      return NextResponse.json({ error: 'Player number must be between 1 and 99' }, { status: 400 })
+    if (!number || isNaN(number) || number < 1 || number > 150) {
+      return NextResponse.json({ error: 'Player number must be between 1 and 150' }, { status: 400 })
     }
 
     // Check if team exists

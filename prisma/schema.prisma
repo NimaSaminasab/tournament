@@ -10,12 +10,28 @@ datasource db {
   url      = "file:./dev.db"
 }
 
-model Team {
+model Tournament {
   id        Int      @id @default(autoincrement())
   name      String
+  isFinished Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
+  teams Team[]
+  games Game[]
+  players Player[]
+  
+  @@map("tournaments")
+}
+
+model Team {
+  id        Int      @id @default(autoincrement())
+  name      String
+  tournamentId Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   players Player[]
   homeGames Game[] @relation("HomeTeam")
   awayGames Game[] @relation("AwayTeam")
@@ -28,11 +44,13 @@ model Player {
   id        Int      @id @default(autoincrement())
   name      String
   number    Int
-  teamId    Int
+  tournamentId Int?
+  teamId    Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  tournament Tournament? @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
+  team Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)
   goals Goal[]
   
   @@unique([teamId, number])
@@ -41,6 +59,7 @@ model Player {
 
 model Game {
   id        Int      @id @default(autoincrement())
+  tournamentId Int
   homeTeamId Int
   awayTeamId Int
   homeScore Int      @default(0)
@@ -49,6 +68,7 @@ model Game {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   homeTeam Team @relation("HomeTeam", fields: [homeTeamId], references: [id])
   awayTeam Team @relation("AwayTeam", fields: [awayTeamId], references: [id])
   goals    Goal[]
@@ -62,6 +82,7 @@ model Goal {
   playerId  Int
   teamId    Int
   minute    Int?
+  ownGoal   Boolean  @default(false)
   createdAt DateTime @default(now())
   
   game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
