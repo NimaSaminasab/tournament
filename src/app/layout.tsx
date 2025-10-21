@@ -31,17 +31,17 @@ export default function RootLayout({
                 <div className="flex justify-center">
                   <Stopwatch />
                 </div>
-                <nav className="flex items-center justify-end space-x-2 sm:space-x-3">
-                  <a href="/" className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-white rounded-md hover:bg-blue-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+                <nav className="flex items-center justify-end space-x-1">
+                  <a href="/" className="px-2 py-1 text-xs font-medium text-gray-600 hover:text-white rounded-md hover:bg-blue-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
                     Hjem
                   </a>
-                  <a href="/players" className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-white rounded-md hover:bg-purple-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500/50">
+                  <a href="/players" className="px-2 py-1 text-xs font-medium text-gray-600 hover:text-white rounded-md hover:bg-purple-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500/50">
                     Spillere
                   </a>
-                  <a href="/tournaments" className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-white rounded-md hover:bg-green-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500/50">
+                  <a href="/tournaments" className="px-2 py-1 text-xs font-medium text-gray-600 hover:text-white rounded-md hover:bg-green-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500/50">
                     Turneringer
                   </a>
-                  <a href="/standings" className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-white rounded-md hover:bg-indigo-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
+                  <a href="/standings" className="px-2 py-1 text-xs font-medium text-gray-600 hover:text-white rounded-md hover:bg-indigo-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
                     Tabeller
                   </a>
                   <SetupMenu />
