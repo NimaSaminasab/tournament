@@ -65,44 +65,80 @@ export async function GET() {
       tournamentsParticipated = tournamentIds.size
 
       // Calculate wins/draws/losses based on all games the player has participated in
-      // We need to find all games where the player has scored goals or was part of a team
-      const playerGameIds = new Set<number>()
+      // We need to find all games where the player was part of a team (not just goals)
       
-      // Add games from goals
+      // Get all games where this player has scored goals (these are definitely games they participated in)
+      const goalGameIds = new Set<number>()
       player.goals.forEach(goal => {
         if (goal.game) {
-          playerGameIds.add(goal.game.id)
+          goalGameIds.add(goal.game.id)
         }
       })
 
-      // For each game the player participated in, determine the result
-      for (const gameId of playerGameIds) {
-        const game = await prisma.game.findUnique({
-          where: { id: gameId },
-          include: {
-            goals: true,
-            homeTeam: true,
-            awayTeam: true
+      // Get all games where the player's current team participated (if they have a team)
+      const teamGameIds = new Set<number>()
+      if (player.team) {
+        // Add home games
+        player.team.homeGames.forEach(game => {
+          if (game.status === 'FINISHED') {
+            teamGameIds.add(game.id)
           }
         })
+        
+        // Add away games
+        player.team.awayGames.forEach(game => {
+          if (game.status === 'FINISHED') {
+            teamGameIds.add(game.id)
+          }
+        })
+      }
+
+      // Combine both sets of game IDs
+      const allPlayerGameIds = new Set([...goalGameIds, ...teamGameIds])
+
+      // For each game the player participated in, determine the result
+      for (const gameId of allPlayerGameIds) {
+        // Find the game data - check if it's already loaded from team games or goals
+        let game = null
+        
+        // First check if it's in the team games
+        if (player.team) {
+          game = player.team.homeGames.find(g => g.id === gameId) || 
+                 player.team.awayGames.find(g => g.id === gameId)
+        }
+        
+        // If not found in team games, check goals
+        if (!game) {
+          const goalWithGame = player.goals.find(g => g.game?.id === gameId)
+          if (goalWithGame && goalWithGame.game) {
+            game = goalWithGame.game
+          }
+        }
 
         if (game && game.status === 'FINISHED') {
           // Find which team the player was on in this game
           let playerTeamId: number | null = null
           
-          // Check if player was on home team (by looking at goals or team history)
-          const homeTeamGoal = game.goals.find(g => g.playerId === player.id && g.teamId === game.homeTeamId)
-          if (homeTeamGoal) {
+          // Check if player was on home team
+          if (player.team && player.team.id === game.homeTeamId) {
             playerTeamId = game.homeTeamId
-          } else {
+          } else if (player.team && player.team.id === game.awayTeamId) {
             // Check if player was on away team
-            const awayTeamGoal = game.goals.find(g => g.playerId === player.id && g.teamId === game.awayTeamId)
-            if (awayTeamGoal) {
-              playerTeamId = game.awayTeamId
+            playerTeamId = game.awayTeamId
+          } else {
+            // Fallback: check goals to determine team
+            const homeTeamGoal = game.goals?.find(g => g.playerId === player.id && g.teamId === game.homeTeamId)
+            if (homeTeamGoal) {
+              playerTeamId = game.homeTeamId
+            } else {
+              const awayTeamGoal = game.goals?.find(g => g.playerId === player.id && g.teamId === game.awayTeamId)
+              if (awayTeamGoal) {
+                playerTeamId = game.awayTeamId
+              }
             }
           }
 
-          if (playerTeamId) {
+          if (playerTeamId && game.goals) {
             const homeGoals = game.goals.filter(g => g.teamId === game.homeTeamId && !g.ownGoal).length
             const awayGoals = game.goals.filter(g => g.teamId === game.awayTeamId && !g.ownGoal).length
             
