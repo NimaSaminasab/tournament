@@ -42,6 +42,9 @@ export async function PATCH(
           tournamentId: null // Remove from tournament context
         }
       })
+      
+      // Note: Player statistics will be automatically updated when the stats API is called
+      // because it now calculates stats based on historical game participation rather than current team membership
     }
 
     return NextResponse.json(updatedTournament)

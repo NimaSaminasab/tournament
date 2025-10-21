@@ -64,41 +64,69 @@ export async function GET() {
       })
       tournamentsParticipated = tournamentIds.size
 
-      // Calculate wins/draws/losses for each team the player has been on
-      if (player.team) {
-        const team = player.team
+      // Calculate wins/draws/losses based on all games the player has participated in
+      // We need to find all games where the player has scored goals or was part of a team
+      const playerGameIds = new Set<number>()
+      
+      // Add games from goals
+      player.goals.forEach(goal => {
+        if (goal.game) {
+          playerGameIds.add(goal.game.id)
+        }
+      })
 
-        // Count home games
-        team.homeGames.forEach(game => {
-          if (game.status === 'FINISHED') {
-            const homeGoals = game.goals.filter(g => g.teamId === team.id && !g.ownGoal).length
-            const awayGoals = game.goals.filter(g => g.teamId !== team.id && !g.ownGoal).length
-            
-            if (homeGoals > awayGoals) {
-              wins++
-            } else if (homeGoals === awayGoals) {
-              draws++
-            } else {
-              losses++
-            }
+      // For each game the player participated in, determine the result
+      for (const gameId of playerGameIds) {
+        const game = await prisma.game.findUnique({
+          where: { id: gameId },
+          include: {
+            goals: true,
+            homeTeam: true,
+            awayTeam: true
           }
         })
 
-        // Count away games
-        team.awayGames.forEach(game => {
-          if (game.status === 'FINISHED') {
+        if (game && game.status === 'FINISHED') {
+          // Find which team the player was on in this game
+          let playerTeamId: number | null = null
+          
+          // Check if player was on home team (by looking at goals or team history)
+          const homeTeamGoal = game.goals.find(g => g.playerId === player.id && g.teamId === game.homeTeamId)
+          if (homeTeamGoal) {
+            playerTeamId = game.homeTeamId
+          } else {
+            // Check if player was on away team
+            const awayTeamGoal = game.goals.find(g => g.playerId === player.id && g.teamId === game.awayTeamId)
+            if (awayTeamGoal) {
+              playerTeamId = game.awayTeamId
+            }
+          }
+
+          if (playerTeamId) {
             const homeGoals = game.goals.filter(g => g.teamId === game.homeTeamId && !g.ownGoal).length
-            const awayGoals = game.goals.filter(g => g.teamId === team.id && !g.ownGoal).length
+            const awayGoals = game.goals.filter(g => g.teamId === game.awayTeamId && !g.ownGoal).length
             
-            if (awayGoals > homeGoals) {
-              wins++
-            } else if (awayGoals === homeGoals) {
-              draws++
+            if (playerTeamId === game.homeTeamId) {
+              // Player was on home team
+              if (homeGoals > awayGoals) {
+                wins++
+              } else if (homeGoals === awayGoals) {
+                draws++
+              } else {
+                losses++
+              }
             } else {
-              losses++
+              // Player was on away team
+              if (awayGoals > homeGoals) {
+                wins++
+              } else if (awayGoals === homeGoals) {
+                draws++
+              } else {
+                losses++
+              }
             }
           }
-        })
+        }
       }
 
       return {
