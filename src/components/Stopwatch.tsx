@@ -90,14 +90,6 @@ export default function Stopwatch() {
 
   return (
     <div className="flex items-center space-x-3">
-      <div className="relative">
-        <span className="font-mono text-3xl font-bold px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg shadow-lg select-none border-2 border-white/20">
-          {formatTime(seconds)}
-        </span>
-        {running && (
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse border-2 border-white"></div>
-        )}
-      </div>
       {running ? (
         <button
           type="button"
@@ -117,6 +109,14 @@ export default function Stopwatch() {
           ▶️ Start
         </button>
       )}
+      <div className="relative">
+        <span className="font-mono text-3xl font-bold px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg shadow-lg select-none border-2 border-white/20">
+          {formatTime(seconds)}
+        </span>
+        {running && (
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse border-2 border-white"></div>
+        )}
+      </div>
       <button
         type="button"
         onClick={handleReset}
