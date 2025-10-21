@@ -34,7 +34,7 @@ export async function GET() {
     })
 
     // Calculate stats for each player
-    const playerStats = players.map(player => {
+    const playerStats = await Promise.all(players.map(async player => {
       let wins = 0
       let draws = 0
       let losses = 0
@@ -141,7 +141,7 @@ export async function GET() {
         ownGoals,
         tournamentsParticipated
       }
-    })
+    }))
 
     return NextResponse.json(playerStats)
   } catch (error) {
