@@ -81,12 +81,15 @@ export default function PlayersHomePage() {
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Selvmål
                 </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Mål/kamp
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {playerStats.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
                     Ingen spillere registrert
                   </td>
                 </tr>
@@ -135,6 +138,14 @@ export default function PlayersHomePage() {
                       <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-900">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                           {player.ownGoals}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-900">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                          {player.wins + player.draws + player.losses > 0 
+                            ? (player.goalsScored / (player.wins + player.draws + player.losses)).toFixed(2)
+                            : '0.00'
+                          }
                         </span>
                       </td>
                     </tr>
