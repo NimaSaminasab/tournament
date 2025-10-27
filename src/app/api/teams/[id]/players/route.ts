@@ -57,7 +57,17 @@ export async function POST(
       data: {
         name: name.trim(),
         number: number,
-        teamId: teamId
+        teamId: teamId,
+        tournamentId: team.tournamentId
+      }
+    })
+
+    // Store team composition for historical tracking
+    await prisma.teamComposition.create({
+      data: {
+        tournamentId: team.tournamentId,
+        teamId: teamId,
+        playerId: player.id
       }
     })
 

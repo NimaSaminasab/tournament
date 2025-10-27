@@ -80,6 +80,15 @@ export async function POST(
         where: { id: freePlayer.id },
         data: { teamId: teamIdNum, number: newNumber, tournamentId }
       })
+      
+      // Store team composition for historical tracking
+      await prisma.teamComposition.create({
+        data: {
+          tournamentId: tournamentId,
+          teamId: teamIdNum,
+          playerId: player.id
+        }
+      })
     } else {
       player = await prisma.player.create({
         data: {
@@ -87,6 +96,15 @@ export async function POST(
           number: number!,
           tournamentId,
           teamId: teamIdNum
+        }
+      })
+      
+      // Store team composition for historical tracking
+      await prisma.teamComposition.create({
+        data: {
+          tournamentId: tournamentId,
+          teamId: teamIdNum,
+          playerId: player.id
         }
       })
     }

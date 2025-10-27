@@ -16,93 +16,30 @@ interface PlayerStats {
 }
 
 export default function PlayersHomePage() {
-  const [name, setName] = useState('')
-  const [number, setNumber] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [players, setPlayers] = useState<{ id: number; name: string; number: number }[]>([])
   const [playerStats, setPlayerStats] = useState<PlayerStats[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const loadData = async () => {
+    const loadStats = async () => {
       try {
-        // Load basic players list
-        const playersRes = await fetch('/api/players')
-        if (playersRes.ok) {
-          const playersData = await playersRes.json()
-          setPlayers(playersData)
-        }
-
-        // Load player statistics
         const statsRes = await fetch('/api/players/stats')
         if (statsRes.ok) {
           const statsData = await statsRes.json()
           setPlayerStats(statsData)
         }
       } catch (error) {
-        console.error('Error loading data:', error)
+        console.error('Error loading stats:', error)
       } finally {
         setLoading(false)
       }
     }
-    loadData()
+    loadStats()
   }, [])
-
-  const handleDeletePlayer = async (playerId: number) => {
-    if (!confirm('Er du sikker på at du vil slette denne spilleren permanent?')) {
-      return
-    }
-    try {
-      const res = await fetch(`/api/players/${playerId}`, { method: 'DELETE' })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        alert(err.error || 'Feil ved sletting av spiller')
-        return
-      }
-      setPlayers((prev) => prev.filter((p) => p.id !== playerId))
-      setPlayerStats((prev) => prev.filter((p) => p.id !== playerId))
-    } catch (e: any) {
-      alert(e?.message || 'Ukjent feil')
-    }
-  }
-
-  const handleAddPlayer = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!name || !number) return
-    setSubmitting(true)
-    try {
-      const res = await fetch(`/api/players`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, number: parseInt(number, 10) })
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        alert(`Feil ved legg til spiller: ${err.error || res.status}`)
-      } else {
-        setName('')
-        setNumber('')
-        // refresh both lists
-        try {
-          const [playersRes, statsRes] = await Promise.all([
-            fetch('/api/players'),
-            fetch('/api/players/stats')
-          ])
-          if (playersRes.ok) setPlayers(await playersRes.json())
-          if (statsRes.ok) setPlayerStats(await statsRes.json())
-        } catch {}
-      }
-    } catch (e: any) {
-      alert(e?.message || 'Ukjent feil')
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   if (loading) {
     return (
       <div className="px-4 py-6 sm:px-0">
-        <div className="text-center">Laster...</div>
+        <div className="text-center">Laster spillere...</div>
       </div>
     )
   }
@@ -111,48 +48,6 @@ export default function PlayersHomePage() {
     <div className="px-4 py-6 sm:px-0 max-w-7xl mx-auto">
       <h1 className="text-2xl font-semibold text-gray-900 mb-6">Administrer Spillere</h1>
       
-      {/* Add Player Form */}
-      <div className="bg-white shadow rounded-lg p-6 mb-8">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Legg til ny spiller</h2>
-        <form onSubmit={handleAddPlayer} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Spillernavn</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm px-3 py-2"
-                placeholder="Navn"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Spillernummer</label>
-              <input
-                type="number"
-                value={number}
-                onChange={(e) => setNumber(e.target.value)}
-                className="block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm px-3 py-2"
-                placeholder="Nummer (1-150)"
-                min={1}
-                max={150}
-                required
-              />
-            </div>
-          </div>
-          <div className="text-right">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
-            >
-              {submitting ? 'Legger til...' : 'Legg til spiller'}
-            </button>
-          </div>
-        </form>
-      </div>
-
       {/* Player Statistics Table */}
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
@@ -186,15 +81,12 @@ export default function PlayersHomePage() {
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Selvmål
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Handlinger
-                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {playerStats.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                     Ingen spillere registrert
                   </td>
                 </tr>
@@ -245,14 +137,6 @@ export default function PlayersHomePage() {
                           {player.ownGoals}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                        <button
-                          onClick={() => handleDeletePlayer(player.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          Slett
-                        </button>
-                      </td>
                     </tr>
                   ))
               )}
@@ -263,5 +147,3 @@ export default function PlayersHomePage() {
     </div>
   )
 }
-
-

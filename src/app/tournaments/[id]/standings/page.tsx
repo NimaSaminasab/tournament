@@ -118,36 +118,55 @@ async function getStandings(tournamentId: number): Promise<TeamStats[]> {
 }
 
 async function getTopScorers(tournamentId: number): Promise<TopScorer[]> {
-  const players = await prisma.player.findMany({
+  const goals = await prisma.goal.findMany({
     where: {
-      team: {
+      ownGoal: false, // Exclude own goals from top scorers
+      game: {
+        status: 'FINISHED',
         tournamentId: tournamentId
       }
     },
     include: {
-      team: true,
-      goals: {
-        where: {
-          ownGoal: false, // Exclude own goals from top scorers
-          game: {
-            status: 'FINISHED'
-          }
+      player: true,
+      game: {
+        include: {
+          homeTeam: true,
+          awayTeam: true
         }
       }
     }
   })
 
-  const topScorers: TopScorer[] = players
-    .map(player => ({
+  // Group goals by player
+  const playerGoals = new Map<number, { player: any, goals: any[], teamName: string }>()
+  
+  goals.forEach(goal => {
+    const playerId = goal.player.id
+    if (!playerGoals.has(playerId)) {
+      // Determine which team the player was on for this goal
+      const teamName = goal.teamId === goal.game.homeTeamId 
+        ? goal.game.homeTeam.name 
+        : goal.game.awayTeam.name
+      
+      playerGoals.set(playerId, {
+        player: goal.player,
+        goals: [],
+        teamName: teamName
+      })
+    }
+    playerGoals.get(playerId)!.goals.push(goal)
+  })
+
+  const topScorers: TopScorer[] = Array.from(playerGoals.values())
+    .map(({ player, goals, teamName }) => ({
       playerId: player.id,
       playerName: player.name,
       playerNumber: player.number,
-      teamName: player.team.name,
-      goals: player.goals.length
+      teamName: teamName,
+      goals: goals.length
     }))
     .filter(player => player.goals > 0)
     .sort((a, b) => b.goals - a.goals)
-    // Remove .slice(0, 3) to show all scorers
 
   return topScorers
 }
@@ -276,28 +295,41 @@ export default async function TournamentStandingsPage({
       {/* Top Scorers Section */}
       {topScorers.length > 0 && (
         <div className="mt-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Toppscorere</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">🏆 Toppscorere</h2>
           <div className="bg-white shadow rounded-lg overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Alle målskårerne</h3>
+            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                <span className="mr-2">⚽</span>
+                Alle målskårerne i turneringen
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Sortert etter antall mål scoret
+              </p>
             </div>
             <div className="divide-y divide-gray-200">
               {topScorers.map((scorer, index) => (
-                <div key={scorer.playerId} className="px-6 py-4 flex items-center justify-between">
+                <div key={scorer.playerId} className={`px-6 py-4 flex items-center justify-between transition-colors hover:bg-gray-50 ${
+                  index < 3 ? 'bg-gradient-to-r from-yellow-50 to-orange-50' : ''
+                }`}>
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold text-white ${
-                        index === 0 ? 'bg-yellow-500' : 
-                        index === 1 ? 'bg-gray-400' : 
-                        index === 2 ? 'bg-orange-600' :
-                        'bg-blue-500'
+                      <span className={`inline-flex items-center justify-center w-10 h-10 rounded-full text-sm font-bold text-white shadow-lg ${
+                        index === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' : 
+                        index === 1 ? 'bg-gradient-to-r from-gray-400 to-gray-600' : 
+                        index === 2 ? 'bg-gradient-to-r from-orange-400 to-orange-600' :
+                        'bg-gradient-to-r from-blue-400 to-blue-600'
                       }`}>
-                        {index + 1}
+                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
                       </span>
                     </div>
                     <div className="ml-4">
                       <div className="text-sm font-medium text-gray-900">
                         #{scorer.playerNumber} {scorer.playerName}
+                        {index < 3 && (
+                          <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                            {index === 0 ? 'Toppscorer' : index === 1 ? '2. plass' : '3. plass'}
+                          </span>
+                        )}
                       </div>
                       <div className="text-sm text-gray-500">
                         {scorer.teamName}
@@ -305,7 +337,7 @@ export default async function TournamentStandingsPage({
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-gray-900">
+                    <div className="text-3xl font-bold text-gray-900">
                       {scorer.goals}
                     </div>
                     <div className="text-sm text-gray-500">
@@ -314,6 +346,11 @@ export default async function TournamentStandingsPage({
                   </div>
                 </div>
               ))}
+            </div>
+            <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
+              <p className="text-xs text-gray-500 text-center">
+                Totalt {topScorers.reduce((sum, scorer) => sum + scorer.goals, 0)} mål scoret av {topScorers.length} spillere
+              </p>
             </div>
           </div>
         </div>

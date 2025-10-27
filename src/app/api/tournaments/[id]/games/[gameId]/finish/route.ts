@@ -30,15 +30,68 @@ export async function POST(
       return NextResponse.json({ error: 'Game is not in progress' }, { status: 400 })
     }
 
+    // Check if this is the first finished game of the tournament
+    const finishedGamesCount = await prisma.game.count({
+      where: {
+        tournamentId: tournamentId,
+        status: 'FINISHED'
+      }
+    })
+
     // Update game status to FINISHED
     const updatedGame = await prisma.game.update({
       where: { id: gameIdNum },
       data: { status: 'FINISHED' },
       include: {
-        homeTeam: true,
-        awayTeam: true
+        homeTeam: {
+          include: {
+            players: true
+          }
+        },
+        awayTeam: {
+          include: {
+            players: true
+          }
+        }
       }
     })
+
+    // If this is the first finished game, update tournament participation for all team members
+    if (finishedGamesCount === 0) {
+      console.log('First game finished! Updating tournament participation for all team members...')
+      
+      // Get all teams in this tournament
+      const tournamentTeams = await prisma.team.findMany({
+        where: { tournamentId: tournamentId },
+        include: {
+          players: true
+        }
+      })
+
+      // Update tournament participation for all players on teams
+      for (const team of tournamentTeams) {
+        for (const player of team.players) {
+          // Store team composition for historical tracking (if not already stored)
+          await prisma.teamComposition.upsert({
+            where: {
+              tournamentId_teamId_playerId: {
+                tournamentId: tournamentId,
+                teamId: team.id,
+                playerId: player.id
+              }
+            },
+            update: {},
+            create: {
+              tournamentId: tournamentId,
+              teamId: team.id,
+              playerId: player.id
+            }
+          })
+        }
+      }
+      
+      console.log(`Updated tournament participation for ${tournamentTeams.reduce((total, team) => total + team.players.length, 0)} players`)
+    }
 
     return NextResponse.json(updatedGame)
   } catch (error) {
