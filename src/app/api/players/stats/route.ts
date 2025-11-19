@@ -108,7 +108,7 @@ export async function GET() {
     // Fallback: Add hardcoded team members for existing tournament (until new tournaments use the new system)
     const additionalTeamMembers = {
       15: [9, 19], // Team A: Chiya Afsar (9), Siamak Siamak (19) - players who never scored
-      16: [23], // Team B: Neda (23) - player who never scored
+      16: [], // No longer force-assign player 23 to Team B
       17: []  // Team C: Only goal scorers (Asib Fayzi, Esmail, Amir Naseri, Guest1)
     }
     
@@ -268,7 +268,36 @@ export async function GET() {
       }
     })
 
-    return NextResponse.json(playerStats)
+    const manualOverrides: Record<number, Partial<{
+      teamName: string
+      wins: number
+      draws: number
+      losses: number
+      goalsScored: number
+      tournamentsParticipated: number
+    }>> = {
+      23: {
+        teamName: 'Yellow',
+        wins: 6,
+        draws: 1,
+        losses: 1,
+        goalsScored: 12,
+        tournamentsParticipated: 1
+      }
+    }
+
+    const finalStats = playerStats.map(stat => {
+      const override = manualOverrides[stat.id]
+      if (!override) {
+        return stat
+      }
+      return {
+        ...stat,
+        ...override
+      }
+    })
+
+    return NextResponse.json(finalStats)
   } catch (error) {
     console.error('Error fetching player stats:', error)
     return NextResponse.json({ error: 'Failed to fetch player stats' }, { status: 500 })
